@@ -70,7 +70,7 @@ You don't need to install these by hand first. HQ checks for each one and shows 
 
 ## How it works
 
-![An agent's drawer: its live terminal, its sandbox, websites it tried to reach, and tabs for its task and messages](docs/images/agent-drawer.png)
+![An agent's drawer: its live terminal, its sandbox, websites it tried to reach, and tabs for its task and messages](docs/images/Terminal.png)
 
 1. **You tell the lead what to build.** It creates a board of small tasks, each with the files it may touch, and assigns them.
 2. **Workers build in their own sandboxes.** Each one pulls `main`, makes a branch, writes the code and opens a PR titled `[TASK-ID] …`.

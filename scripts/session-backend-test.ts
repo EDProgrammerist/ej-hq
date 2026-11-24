@@ -4,13 +4,17 @@
 //
 //   npx tsx scripts/session-backend-test.ts
 
+import { deepStrictEqual } from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { run } from "../server/lib/exec";
 import { ptyBackend } from "../server/backends/pty";
 import { tmuxBackend } from "../server/backends/tmux";
-import type { SessionBackend } from "../server/backends/types";
+import type { SessionBackend, TermSize } from "../server/backends/types";
+import { Hub } from "../server/hub";
+import { Sessions } from "../server/sessions";
+import { loadConfig, loadPlan } from "../server/store";
 
 const FAKE_AGENT = [
   "process.stdin.setEncoding('utf8');",
@@ -39,12 +43,32 @@ async function until(label: string, fn: () => Promise<boolean>, ms = 15_000) {
   throw new Error(`timed out: ${label}`);
 }
 
+async function testResize(root: string) {
+  const repo = { root, name: "resize-test", github: null, originUrl: null, hasCodeRabbit: false, hasInsta: false };
+  const { config } = loadConfig(repo, 7420);
+  const setup = { checks: [], machine: { cpus: 1, memoryGb: 1 }, sandboxReady: false, localReady: false, checkedAt: "" };
+  const sessions = new Sessions(new Hub(repo, config.project.id, config, loadPlan(root), setup), "test-token");
+  const sizes: TermSize[] = [];
+  sessions["terms"].set("agent", { resize: (cols, rows) => sizes.push({ cols, rows }), write() {}, close() {} });
+
+  sessions.resize("agent", 80, 24);
+  sessions.resize("agent", 80, 24); // reopening at the same size asks the terminal to redraw
+  sessions.resize("agent", 80, 22); // the drawer changed height before the redraw completed
+  await sleep(100);
+  deepStrictEqual(sizes.at(-1), { cols: 80, rows: 22 }, "a pending redraw must not restore a stale terminal size");
+
+  sessions.resize("agent", 80, 22);
+  await sleep(100);
+  deepStrictEqual(sizes.slice(-2), [{ cols: 80, rows: 21 }, { cols: 80, rows: 22 }], "a same-size reopen must still redraw at the current size");
+}
+
 async function test(backend: SessionBackend) {
   const name = `hq-backend-test-${process.pid}`;
   const cwd = mkdtempSync(join(tmpdir(), "hq-backend-"));
   let streamed = "";
   let ended = false;
   try {
+    await testResize(cwd);
     await backend.create(name, cwd, { file: process.execPath, args: ["-e", FAKE_AGENT], envFile: null }, { cols: 100, rows: 30 });
     if (!(await backend.exists(name))) throw new Error("session missing after create");
     const view = backend.attach(name, { cols: 90, rows: 25 }, (d) => (streamed += d), () => (ended = true));
@@ -57,6 +81,8 @@ async function test(backend: SessionBackend) {
     // tmux's attach client redraws on its own schedule; the pty backend streams everything.
     if (backend.kind === "pty" && !streamed.includes("got:hello world")) throw new Error("reply not streamed to the view");
     view.resize(80, 20);
+    view.write("follow-up\r");
+    await until("follow-up after resize", async () => (await backend.screenText(name, 10)).includes("got:follow-up"));
 
     if ((await backend.exitInfo(name))?.dead) throw new Error("reported dead while running");
     await backend.type(name, "quit");

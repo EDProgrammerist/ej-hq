@@ -376,14 +376,16 @@ export class Sessions {
   resize(id: string, cols: number, rows: number) {
     const c = Math.max(20, Math.min(400, Math.floor(cols)));
     const r = Math.max(5, Math.min(200, Math.floor(rows)));
-    const same = this.sizes.get(id)?.cols === c && this.sizes.get(id)?.rows === r;
-    this.sizes.set(id, { cols: c, rows: r });
+    const previous = this.sizes.get(id);
+    const size = { cols: c, rows: r };
+    this.sizes.set(id, size);
     const current = () => (id.startsWith("setup:") ? this.fixes.get(id) : id.startsWith("shell:") ? this.shells.get(id) : this.terms.get(id));
     const pty = current();
     if (!pty) return;
     // Resizing a terminal that just exited throws on Windows; a throw in a timer would stop HQ.
     const safeResize = (cs: number, rs: number) => {
-      if (current() !== pty) return;
+      // A redraw must never restore a size that the browser has already replaced.
+      if (this.sizes.get(id) !== size || current() !== pty) return;
       try {
         pty.resize(cs, rs);
       } catch {
@@ -391,7 +393,7 @@ export class Sessions {
       }
     };
     // A same-size resize doesn't redraw; nudge it so a newly opened terminal gets a full screen.
-    if (same) {
+    if (previous?.cols === c && previous.rows === r) {
       safeResize(c, Math.max(5, r - 1));
       setTimeout(() => safeResize(c, r), 60);
     } else safeResize(c, r);
