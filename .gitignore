@@ -16,3 +16,5 @@ prototypes/
 docs/archive/
 docs/initial-idea.md
 *.tsbuildinfo
+
+/shim-start.lock
