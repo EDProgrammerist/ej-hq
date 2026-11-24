@@ -43,4 +43,4 @@ HQ calls the `sbx` CLI and reads its output. sbx 0.48 changed several outputs (f
 
 ## Packaging
 
-Run `npm pack` to build the CLI and create an `ej-hq-<version>.tgz` tarball. CI installs that tarball in a temporary directory and verifies that the CLI starts and serves the UI.
+Run `npm pack` to build the CLI and create an `ejcodes-ej-hq-<version>.tgz` tarball. CI installs that tarball in a temporary directory and verifies that the CLI starts and serves the UI.

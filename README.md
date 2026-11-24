@@ -50,7 +50,7 @@ ej-hq --repo <path>    the repo to manage (default: current folder)
        --version, --help
 ```
 
-To install the CLI from this checkout, run `npm pack` and `npm install -g ./ej-hq-<version>.tgz` with the generated filename. Then run `ej-hq` from any Git repo.
+To install the CLI from this checkout, run `npm pack` and `npm install -g ./ejcodes-ej-hq-<version>.tgz` with the generated filename. Then run `ej-hq` from any Git repo.
 
 ## Requirements
 

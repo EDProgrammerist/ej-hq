@@ -5,7 +5,7 @@
 //   node scripts/smoke-test.mjs <path/to/package.tgz> [port]
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -19,7 +19,7 @@ const projectId = basename(work).toLowerCase();
 const repo = join(work, projectId);
 let hq = null;
 
-const sh = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "pipe", shell: win, encoding: "utf8" });
+const sh = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "pipe", shell: win && cmd === "npm", encoding: "utf8" });
 const step = (msg) => console.log(`• ${msg}`);
 function fail(msg) {
   console.error(`✗ ${msg}`);
@@ -55,7 +55,8 @@ try {
 } catch (e) {
   fail(`npm install failed:\n${e.stdout ?? ""}${e.stderr ?? ""}`);
 }
-const pkgRoot = join(app, "node_modules", "ej-hq");
+const { name: packageName } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const pkgRoot = join(app, "node_modules", packageName);
 const bin = join(pkgRoot, "bin", "ej-hq.mjs");
 step(`version ${sh(process.execPath, [bin, "--version"]).trim()}`);
 
